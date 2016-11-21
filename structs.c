@@ -15,7 +15,9 @@ struct Node{
 	char name[12];
 	int visited;
 	int center;
-	float dist_center;										
+	int center2;
+	float dist_center;
+	float dist_center2;										
 	float* array;     //array of coordinates of item 
 };
 
@@ -330,30 +332,68 @@ void euc_pam_ass(euc_cluster *clusters,int no_cl,int items, Node **array,int siz
 	float distance;
 	for(i=0;i<items;i++){
 		distance=euclidean_distance(array[i]->array,clusters[0].nodeptr->array,size);
+		array[i]->center2=-1;
 		array[i]->dist_center=distance;
 		array[i]->center=0;
 		for(j=1;j<no_cl;j++){
 			distance=euclidean_distance(array[i]->array,clusters[j].nodeptr->array,size);
 			if(distance<array[i]->dist_center){
+				array[i]->dist_center2=array[i]->dist_center;
+				array[i]->center2=array[i]->center;
 				array[i]->dist_center=distance;
 				array[i]->center=j;
+				
+			}
+		}
+	}
+	for(i=0;i<items;i++){
+		if(array[i]->center2==-1){
+			for(j=1;j<no_cl;j++){
+				distance=euclidean_distance(array[i]->array,clusters[j].nodeptr->array,size);
+				 if(distance!=array[i]->dist_center){
+						if(array[i]->center2==-1){
+							array[i]->dist_center2=distance;
+							array[i]->center2=j;
+						}
+						else if(distance<array[i]->dist_center2 ){
+							array[i]->dist_center2=distance;
+							array[i]->center2=j;
+						}
+				}
 			}
 		}
 	}
 /*	for(i=0;i<items;i++){
-		printf("%s, %d\n",array[i]->name,array[i]->center);
+		printf("%s: %d,%d\n",array[i]->name,array[i]->center,array[i]->center2);
 	}*/
 }
 
-/*int euc_clarans(euc_cluster **clusters,int no_cl,int items, Node **array,int size){
+/*int euc_clarans(euc_cluster **clusters,int no_cl,int items, Node **array,int size,int s, int Q){
 	int i,j,flag=0;
+	euc_cluster **tempclusters;
+	tempclusters=malloc(no_cl*sizeof(euc_cluster*));
+	int **m_t;
+	m_t=malloc(Q*sizeof(int*));
+	for(i=0;i<Q;i++){
+		m_t[i]=malloc(2*sizeof(int));
+	}
+	int random;
+	for(i=0;i<Q;i++){
+		random=rand()%(no_cl*itmes);
+		m_t[i][0]=random%no_cl;
+		m_t[i][1]=random/no_cl;
+	}
 	float J=0;
 	for(i=0;i<items;i++){
 		J=J+array[i]->dist_center;
-	}*/
+	}
+	for(i=0;i<Q;i++){
+		
+	}
 	
 	
-}
+	
+}*/
 
 int euc_Loyds(euc_cluster **clusters, int no_cl, int items, Node **array, int size){
 	int i,j,flag=0,k;
@@ -390,6 +430,34 @@ int euc_Loyds(euc_cluster **clusters, int no_cl, int items, Node **array, int si
 	}
 	return flag;
 	
+}
+
+void euc_silhouette(euc_cluster *clusters, Node **array,int size,int no_cl,int items){
+	int i,j;
+	float dista=0, distb=0,s;
+	int suma,sumb;
+	for(i=0;i<items;i++){
+		dista=0;
+		distb=0;
+		suma=0;
+		sumb=0;
+		for(j=0;j<items;j++){
+			if(array[i]->center==array[j]->center){
+				dista=dista+ euclidean_distance(array[i]->array,array[j]->array,size);
+				suma++;
+			}
+			else if(array[i]->center2==array[j]->center){
+				distb=distb+ euclidean_distance(array[i]->array,array[j]->array,size);
+				sumb++;
+			}
+		}
+		suma--;
+		dista=dista/suma;
+		distb=distb/sumb;
+		if(dista>=distb) s=distb/dista -1;
+		else s=distb/dista -1;
+		printf("%s, %f\n",array[i]->name,s);
+	}
 }
 
 void search_euclidean(List_pointers ***hashtables,FILE *input,List_nodes *listn,int k,int L,int size,int W,euc_vec *randvec,long int *random_r,int hashsize,int **G_h,FILE *output){

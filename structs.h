@@ -27,4 +27,5 @@ void print_clusters(euc_cluster *clusters,int no_cl);
 void euc_by_ANN(euc_cluster *clusters,int no_cl,int items, Node **array,int size,List_pointers ***hashtables,int k,int L,int W,euc_vec *randvec,long int *random_r,int hashsize,int **G_h);
 void euc_pam_ass(euc_cluster *clusters,int no_cl,int items, Node **array,int size);
 int euc_Loyds(euc_cluster **clusters, int no_cl, int items, Node **array, int size);
+void euc_silhouette(euc_cluster *clusters, Node **array,int size,int no_cl,int items);
 #endif
