@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 
+
 struct euc_vec{
 	float *vector;     //array of random coordinates
 	float t;
@@ -34,7 +35,8 @@ struct List_pointers{
 
 struct euc_cluster{
 	Node *nodeptr;
-	List_pointers *points;
+	int items;
+	float silhouette;
 };
 
 int F_Euclidean(unsigned long int ID,int hash_size){
@@ -132,10 +134,6 @@ List_nodes* Euclidean_input(FILE *fd,int* final_size, int * item){
 		*item=items;
 		printf("File Read with success\n");
 		List_nodes *pointer=listn;
-	/*	while(pointer!=NULL){
-			printf("%s\n",pointer->point.name);
-			pointer=pointer->next;
-		}*/
 		return listn;
 	}
 	
@@ -161,7 +159,7 @@ void init_array(Node ***array,List_nodes *listn, int items){
 	while(pointer!=NULL){
 		(*array)[i]=&pointer->point;
 		(*array)[i]->center=-1;
-	//	printf("%s,%d\n",(*array)[i]->name,i);
+		(*array)[i]->center2=-1;
 		pointer=pointer->next;
 		i--;
 	}
@@ -192,7 +190,6 @@ void euc_init_parkjun(Node **array,int items,int size,euc_cluster **clusters,int
 		for(j=0;j<items;j++){
 			distance=euclidean_distance(array[i]->array,array[j]->array,size);
 			distances[i][j]=distance;
-			//if(j==i+1) 	printf("%f\n",distances[i][j]);
 		}
 	}
 	float *vi;
@@ -231,17 +228,23 @@ void euc_init_parkjun(Node **array,int items,int size,euc_cluster **clusters,int
 	}
 	for(i=0;i<no_cl;i++){
 		(*clusters)[i].nodeptr=temparray[i];
-		(*clusters)[i].points=NULL;
+		(*clusters)[i].items=0;
+		(*clusters)[i].silhouette=0;
 	}
-  /*	for(i=0;i<no_cl;i++){
-		printf("%s,%f\n",(*clusters)[i].nodeptr->name,vi[i]);
-	}*/
+	for(i=0;i<items;i++){
+		free(distances[i]);
+	}
+	free(distances);
+	free(temparray);
+	free(vi);
 }
 
 void print_clusters(euc_cluster *clusters,int no_cl){
 	int i;
+
 	for(i=0;i<no_cl;i++)
-		printf("%s\n",clusters[i].nodeptr->name);
+		printf("CLUSTER-%d: {size: %d, medoid: %s}\n",i+1,clusters[i].items,clusters[i].nodeptr->name);
+		
 	
 }
 
@@ -275,41 +278,43 @@ void init_hash(List_pointers ****hashtable,euc_vec *randvec,int size,int k,int L
 }
 
 void euc_by_ANN(euc_cluster *clusters,int no_cl,int items, Node **array,int size,List_pointers ***hashtables,int k,int L,int W,euc_vec *randvec,long int *random_r,int hashsize,int **G_h){
-	int i,j;
-	float min_distance,distance;
+	int i,j,sum=0;
+	float min_distance,min_distance1,distance;
 	for(i=0; i<no_cl; i++){
 		for(j=0; j<no_cl; j++){
 			if(j!=i){
-				printf("Compare %s with %s\n",clusters[i].nodeptr->name,clusters[j].nodeptr->name);
 				distance=euclidean_distance(clusters[i].nodeptr->array,clusters[j].nodeptr->array,size);
 				if(i==0 && j==1) min_distance=distance;
 				if(distance<min_distance) min_distance=distance;
 			}
 		}
 	}
+	min_distance1=min_distance;
 	min_distance=min_distance/2;
 	int bucket,id,flag,flag1;
 	do{
-		printf("radious is %f\n",min_distance);
 		flag=0;
 		for(i=0;i<no_cl;i++){
 			for(j=0;j<L;j++){
-				id=ID_euclidean(G_h,i,*clusters[i].nodeptr, size,random_r,k,randvec,W);
+				id=ID_euclidean(G_h,j,*clusters[i].nodeptr, size,random_r,k,randvec,W);
 				bucket= F_Euclidean(id,hashsize);
-				List_pointers *go=hashtables[bucket][i];
+				List_pointers *go=hashtables[bucket][j];
 				while(go!=NULL){
 					distance=euclidean_distance(go->nodeptr->array,clusters[i].nodeptr->array,size);
 					if(distance<=min_distance){
 						if(go->nodeptr->center==-1){
 							flag=1;
+							sum++;
 							go->nodeptr->dist_center=distance;
-							go->nodeptr->center=j;
+							go->nodeptr->center=i;
 						}
 						else{
 							if(distance < go->nodeptr->dist_center){
 								flag=1;
+								go->nodeptr->dist_center2=go->nodeptr->dist_center;
+								go->nodeptr->center2=go->nodeptr->center;
 								go->nodeptr->dist_center=distance;
-								go->nodeptr->center=j;
+								go->nodeptr->center=i;
 							}
 						}
 					}
@@ -319,11 +324,41 @@ void euc_by_ANN(euc_cluster *clusters,int no_cl,int items, Node **array,int size
 		}
 		min_distance= 2*min_distance;
 	}while(flag==1);
-	/*for(i=0;i<items;i++){
-		if(array[i]->)
-	}*/
 	for(i=0;i<items;i++){
-		printf("%s, %d\n",array[i]->name,array[i]->center);
+		float dist1;
+		if(array[i]->center==-1){
+			dist1= euclidean_distance(array[i]->array,clusters[0].nodeptr->array,size);
+			array[i]->center=0;
+			array[i]->dist_center=dist1;
+			for(j=1;j<no_cl;j++){
+				dist1= euclidean_distance(array[i]->array,clusters[j].nodeptr->array,size);
+				if(dist1<array[i]->dist_center){
+					array[i]->center2=array[i]->center;
+					array[i]->dist_center2=array[i]->dist_center;
+					array[i]->center=j;
+					array[i]->dist_center=dist1;
+				}
+			}
+		}
+		if(array[i]->center2==-1){
+			if(array[i]->center==0){
+				 dist1= euclidean_distance(array[i]->array,clusters[1].nodeptr->array,size);
+				 array[i]->center2=1;
+				array[i]->dist_center2=dist1;
+			}
+			else{
+				dist1= euclidean_distance(array[i]->array,clusters[0].nodeptr->array,size);
+				array[i]->center2=0;
+				array[i]->dist_center2=dist1;
+			}
+			for(j=2;j<no_cl;j++){
+				dist1= euclidean_distance(array[i]->array,clusters[j].nodeptr->array,size);
+				if(dist1<array[i]->dist_center2 && array[i]->center!=j){
+					array[i]->dist_center2=dist1;
+					array[i]->center2=j;
+				}
+			}
+		}
 	}
 }
 
@@ -363,15 +398,11 @@ void euc_pam_ass(euc_cluster *clusters,int no_cl,int items, Node **array,int siz
 			}
 		}
 	}
-/*	for(i=0;i<items;i++){
-		printf("%s: %d,%d\n",array[i]->name,array[i]->center,array[i]->center2);
-	}*/
 }
 
-/*int euc_clarans(euc_cluster **clusters,int no_cl,int items, Node **array,int size,int s, int Q){
-	int i,j,flag=0;
-	euc_cluster **tempclusters;
-	tempclusters=malloc(no_cl*sizeof(euc_cluster*));
+int euc_clarans(euc_cluster **clusters,int no_cl,int items, Node **array,int size,int s, int Q){
+	int i,j,flag=0,w;
+	euc_cluster *tempclusters;
 	int **m_t;
 	m_t=malloc(Q*sizeof(int*));
 	for(i=0;i<Q;i++){
@@ -379,7 +410,7 @@ void euc_pam_ass(euc_cluster *clusters,int no_cl,int items, Node **array,int siz
 	}
 	int random;
 	for(i=0;i<Q;i++){
-		random=rand()%(no_cl*itmes);
+		random=rand()%(no_cl*items);
 		m_t[i][0]=random%no_cl;
 		m_t[i][1]=random/no_cl;
 	}
@@ -387,13 +418,46 @@ void euc_pam_ass(euc_cluster *clusters,int no_cl,int items, Node **array,int siz
 	for(i=0;i<items;i++){
 		J=J+array[i]->dist_center;
 	}
-	for(i=0;i<Q;i++){
-		
+	flag=0;
+	float best_J=J;
+	float dJ,distance,J_new;
+	for(w=0;w<s;w++){
+		for(i=0;i<Q;i++){
+			dJ=0;
+			for(j=0;j<items;j++){
+				distance= euclidean_distance(array[j]->array,array[m_t[i][1]]->array,size);
+				if(array[j]->center==m_t[i][0]){
+					if(array[j]->dist_center2>=distance){
+						dJ=dJ+distance- array[j]->dist_center;
+					}
+					else{
+						dJ=dJ+array[j]->dist_center2 - array[j]->dist_center;
+					}
+				}
+				else{
+					if(array[j]->dist_center>distance){
+						dJ=dJ+distance- array[j]->dist_center;
+					}
+				}
+			}
+			J_new=J+dJ;
+			if(J_new<J && J_new<best_J){ 
+				(*clusters)[m_t[i][0]].nodeptr=array[m_t[i][1]];
+		 		best_J=J_new;
+		 		flag=1;
+			}
+		}
 	}
-	
-	
-	
-}*/
+	for(i=0;i<items;i++){
+		array[i]->center=-1;
+		array[i]->center2=-1;
+	}
+	for(i=0;i<Q;i++){
+		free(m_t[i]);
+	}
+	free(m_t);
+	return flag;
+}
 
 int euc_Loyds(euc_cluster **clusters, int no_cl, int items, Node **array, int size){
 	int i,j,flag=0,k;
@@ -420,22 +484,104 @@ int euc_Loyds(euc_cluster **clusters, int no_cl, int items, Node **array, int si
 				}
 			}
 		}
-	//	printf("Center changed in cluster: %d. Old was %s new is %s\n",j,(*clusters)[j].nodeptr->name,p->name);
 		if(p!=(*clusters)[j].nodeptr){
 			flag=1;
-			printf("Center changed in cluster: %d. Old was %s new is %s\n",j,(*clusters)[j].nodeptr->name,p->name);
 			(*clusters)[j].nodeptr=p;
-
+		}
+	}
+	if(flag==1){
+		for(i=0;i<items;i++){
+			array[i]->center=-1;
+			array[i]->center2=-1;
 		}
 	}
 	return flag;
-	
 }
+
+void k_medoids(int k,int size,int items,Node ***array,euc_cluster **clusters){
+	int centers_count=1;
+	int random,*cent_pos,flag,flag1,i,l,j;
+	srand(time(NULL));
+	float *prob,sum,sumtemp,rand_sum,temp,min;
+	float *previous_rands;
+	random=rand() % items;
+	cent_pos=malloc(k*sizeof( int));
+	prob=malloc((items+1)*sizeof( float));
+	previous_rands=malloc(k*sizeof(float));
+	cent_pos[0]=random;
+	(*clusters)[centers_count-1].nodeptr=(*array)[random];
+	centers_count++;
+	while(centers_count<=k){
+		sum=0.0;
+		for (i=0;i<items;i++){
+			flag=0;
+			for(l=0;l<centers_count-1;l++){
+				if(i==cent_pos[l])
+					flag=1;
+			}
+			if(flag==0){
+				min=euclidean_distance((*array)[i]->array,(*clusters)[0].nodeptr->array,size);
+				for(j=1;j<centers_count-1;j++){
+					temp=euclidean_distance((*array)[i]->array,(*clusters)[j].nodeptr->array,size);
+					if(temp<min){
+						min=temp;
+					}
+				}
+				prob[i]=min;
+				sum+=pow(prob[i],2);  
+			}
+		}
+		rand_sum = (float)rand()/(float)(RAND_MAX/sum);
+		flag1=1;
+		flag=0;
+		while(flag==0){
+			for(j=0;j<centers_count-2;j++){
+				if(rand_sum==previous_rands[j])
+					flag1=0;
+			}
+			if(flag1==1){
+				previous_rands[centers_count-2]=rand_sum;
+				flag=1;
+			}
+			else
+				rand_sum = (float)rand()/(float)(RAND_MAX/sum);
+		}
+		flag=0;
+		i=0;
+		sumtemp=0;
+		while(i<items && flag==0){		
+			flag1=0;
+			for(l=0;l<centers_count-1;l++){
+				if(i==cent_pos[l])
+					flag1=1;
+			}
+			if(flag1==0){
+				sumtemp+=pow(prob[i],2);
+				if(sumtemp>=rand_sum){							//if the new temp surpasses the rand ,means we found our new center
+					(*clusters)[centers_count-1].nodeptr=(*array)[i];
+					cent_pos[centers_count-1]=i;
+					flag=1;
+				}	
+			}		
+			i++;
+		}
+		centers_count++;
+	}
+	free(cent_pos);
+	free(prob);
+	free(previous_rands);
+}
+
+
 
 void euc_silhouette(euc_cluster *clusters, Node **array,int size,int no_cl,int items){
 	int i,j;
 	float dista=0, distb=0,s;
 	int suma,sumb;
+	for(i=0;i<no_cl;i++){
+		clusters[i].items=0;
+		clusters[i].silhouette=0;
+	}
 	for(i=0;i<items;i++){
 		dista=0;
 		distb=0;
@@ -451,111 +597,37 @@ void euc_silhouette(euc_cluster *clusters, Node **array,int size,int no_cl,int i
 				sumb++;
 			}
 		}
-		suma--;
 		dista=dista/suma;
 		distb=distb/sumb;
-		if(dista>=distb) s=distb/dista -1;
-		else s=distb/dista -1;
-		printf("%s, %f\n",array[i]->name,s);
+		if(dista>=distb) s= distb/dista -1;
+		else s=1- dista/distb;
+		clusters[array[i]->center].items++;
+		clusters[array[i]->center].silhouette+=s;
+	}
+	for(i=0;i<no_cl;i++){
+		clusters[i].silhouette=clusters[i].silhouette/clusters[i].items;
 	}
 }
 
-void search_euclidean(List_pointers ***hashtables,FILE *input,List_nodes *listn,int k,int L,int size,int W,euc_vec *randvec,long int *random_r,int hashsize,int **G_h,FILE *output){
-	int i,j,bucket,id;
-    	char radius[20];
-	int flag=0;
-    	fscanf(input, "Radius: %s\n",radius);
-    	double time_spent,time_spent1;
-   	float Radius= atof(radius);
-    float distance, max_distance=1000;
-    List_pointers *neighbor;
-    clock_t begin, begin1, end, end1;
-    if (Radius==0) flag=1;
-    char bloo[12];
-    while(!feof(input)){
-    	memset(bloo, 0, sizeof(bloo));
-    	fscanf(input, "%s",bloo);
-    	if (!strcmp(bloo,"")){
-            break;
-        }
-        Node point;
-        point.array=malloc(size*sizeof(float));
-        for(i=0;i<size;i++)
-        {
-        	fscanf(input, "%f", &point.array[i]);
-        }
-        List_nodes *pointer=listn;
-        while(pointer!=NULL){
-       			
-        		pointer->point.visited=0;
-        		pointer=pointer->next;
-        		
-		}
-        max_distance=1000;
-        begin=clock();
-        for(i=0;i<L;i++){
-        	id=ID_euclidean(G_h,i, point, size,random_r,k,randvec,W);
-			bucket= F_Euclidean(id,hashsize);
-			List_pointers *go=hashtables[bucket][i];
-			while(go!=NULL){
-				if(id==go->id){                                                                    //search for nearest neighbour 
-					if(go->nodeptr->visited==0){
-						distance=euclidean_distance(point.array,go->nodeptr->array,size);
-						if(distance<max_distance && distance!=0){
-							max_distance=distance;
-							neighbor=go;
-						}
-						go->nodeptr->visited=1;
-					}
-				}
-				go=go->next;
-			}
-		}
-		end=clock();
-    	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-    	pointer=listn;
-		float max_distance1=1000;
-		begin1=clock();
-       	while(pointer!=NULL){
-       		distance=euclidean_distance(point.array,pointer->point.array,size);
-        	if(distance<=max_distance1 && distance!=0){                        //all visited=0 and search for true NN at the same time
-        		max_distance1=distance;
-        	}	
-        	pointer->point.visited=0;
-        	pointer=pointer->next;
-        }
-		end1=clock();
-		time_spent1 = (double)(end1 - begin1) / CLOCKS_PER_SEC;
-		fflush(output);
-        fprintf(output,"\nQuery: %s\n",bloo);
-        if (flag==0){
-        	fflush(output);
-        	fprintf(output,"R-nearest neighbours:\n");
-        	for(i=0;i<L;i++){
-				id=ID_euclidean(G_h,i, point, size,random_r,k,randvec,W);
-				bucket= F_Euclidean(id,hashsize);
-				List_pointers *go=hashtables[bucket][i];
-				while(go!=NULL){
-					if(id==go->id){
-						if(go->nodeptr->visited==0){
-							distance=euclidean_distance(point.array,go->nodeptr->array,size); //print neighbours in radius
-							if(distance<=Radius){
-								fflush(output);
-								fprintf(output,"%s\n",go->nodeptr->name);
-							}
-							go->nodeptr->visited=1;
-						}
-					}
-					go=go->next;
-				}
-			}
-		}
-		fflush(output);
-		fprintf(output,"Nearest neighbor: %s\nDistanceLSH: %f\n",neighbor->nodeptr->name,max_distance);
-		fprintf(output,"DistanceTrue: %f\ntLSH: %f\ntTrue:%f\n",max_distance1,time_spent,time_spent1);
-		free(point.array);
+void euc_print_data(FILE *output,euc_cluster *clusters, Node **array, int size, int items, int no_cl,int flag,double time){
+	int i,j;
+	for(i=0; i<no_cl; i++){
+		fprintf(output,"CLUSTER-%d: {size: %d, medoid: %s}\n",i+1,clusters[i].items,clusters[i].nodeptr->name);
 	}
-	printf("File written successfully\n");
+	fprintf(output,"clustering time:%f\n",time);
+	fprintf(output,"Silhouette: [");
+	for(i=0;i<no_cl;i++){
+		if(i!=0) fprintf(output,",");
+		fprintf(output,"%f",clusters[i].silhouette);
+		clusters[i].silhouette=0;
+		clusters[i].items=0;
+		clusters[i].nodeptr=NULL;
+	}
+	fprintf(output,"]\n");
+	for(i=0;i<items;i++){
+		array[i]->center=-1;
+		array[i]->center2=-1;
+	}
 }
 
 void free_hash(List_pointers  ****hashtable, int hashsize,int L){
@@ -595,4 +667,96 @@ void free_randvec(euc_vec **randvec, int L, int k){
 	}
 	free(*randvec);
 	(*randvec)=NULL;
+}
+
+void euc_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int W){
+	clock_t begin, end;
+	double time_spent;
+	int **G_h;
+	int size,o,items,i,j,ok;
+	List_nodes *listn;       //list of elements read from file
+	listn=Euclidean_input(input,&size, &items); //store elements from file in list
+	if(k>(log(items)/log(2))){
+		k=(log(items)/log(2))-1;
+		printf("k is to big, k is going to be %d\n",k);
+	}
+	euc_vec *randvec;             // random vectors
+	init_randvec(&randvec,L,k,W,size);   
+	initG_h(&G_h,k,L,1,size);  
+	int hashsize=items/8;       
+	List_pointers ***hashtables;   
+	long int *random_r;    //1d array with random r
+	random_r=malloc(k*sizeof(long int));
+	for(i=0;i<k;i++){
+			random_r[i]=(long int)rand();
+	}
+	init_hash(&hashtables,randvec,size,k,L,hashsize,listn,G_h,W,random_r); //store itmes from list to hashtables with euclidean method
+	fclose(input);
+	Node **objects;
+	init_array(&objects,listn,items);
+	euc_cluster *clusters;
+	init_euc_cl(&clusters,no_cl);
+	printf("Writing in file...\n");
+	for(i=1;i<3;i++){
+		for(j=0;j<4;j++){
+			begin=clock();
+			if(i==1) k_medoids(no_cl,size,items,&objects,&clusters);
+			else if(i==2) euc_init_parkjun(objects,items,size,&clusters,no_cl);
+			if (j==0){
+				fprintf(output,"Algorithm: I%dA1U1\n",i);
+				do{
+					euc_pam_ass(clusters,no_cl,items,objects,size);
+					ok=euc_Loyds(&clusters,no_cl,items,objects,size);
+				}while(ok==1);
+				end=clock();
+    			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+				euc_silhouette(clusters,objects,size,no_cl,items);
+				euc_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+						
+			}
+			else if(j==1){
+				fprintf(output,"Algorithm: I%dA1U2\n",i);
+				for(o=0;o<s;o++){
+					euc_pam_ass(clusters,no_cl,items,objects,size);
+					ok=euc_clarans(&clusters,no_cl,items,objects,size,1,Q);
+				}
+				euc_pam_ass(clusters,no_cl,items,objects,size);
+				end=clock();
+    			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+				euc_silhouette(clusters,objects,size,no_cl,items);
+				euc_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+			}
+			else if(j==2){
+				fprintf(output,"Algorithm: I%dA2U1\n",i);
+				do{
+					euc_by_ANN(clusters,no_cl,items,objects,size,hashtables,k,L,W,randvec,random_r,hashsize,G_h);
+					ok=euc_Loyds(&clusters,no_cl,items,objects,size);
+				}while(ok==1);
+				end=clock();
+    			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+				euc_silhouette(clusters,objects,size,no_cl,items);
+				euc_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+			}
+			else if(j==3){
+				fprintf(output,"Algorithm: I%dA2U2\n",i);
+				for(o=0;o<s;o++){
+					euc_by_ANN(clusters,no_cl,items,objects,size,hashtables,k,L,W,randvec,random_r,hashsize,G_h);
+					ok=euc_clarans(&clusters,no_cl,items,objects,size,1,Q);
+				}
+				euc_by_ANN(clusters,no_cl,items,objects,size,hashtables,k,L,W,randvec,random_r,hashsize,G_h);
+				end=clock();
+    			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+				euc_silhouette(clusters,objects,size,no_cl,items);
+				euc_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+			}
+		}
+	}
+	fclose(output);
+	free(clusters);
+	free(objects);
+	free_randvec(&randvec,L,k);
+	free_hash(&hashtables,hashsize,L);
+	free_list_nodes(&listn,size);
+	freeG_h(&G_h,L);
+	free (random_r);
 }
