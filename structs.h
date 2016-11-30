@@ -31,5 +31,5 @@ void euc_silhouette(euc_cluster *clusters, Node **array,int size,int no_cl,int i
 int euc_clarans(euc_cluster **clusters,int no_cl,int items, Node **array,int size,int s, int Q);
 void k_medoids(int k,int size,int items,Node ***array,euc_cluster **clusters);
 void euc_print_data(FILE *output,euc_cluster *clusters, Node **array, int size, int items, int no_cl,int flag,double time);
-void euc_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int W);
+void euc_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int W,int com);
 #endif

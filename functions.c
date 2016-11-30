@@ -72,6 +72,10 @@ void freeG_h(int ***G_h,int L){
 int configuration(FILE *config,int *Q,int *k,int *L,int *no_cl,int *s){
 	char param[30];
 	int tempint;
+	*k=4;
+	*Q=250;
+	*L=5;
+	*s=2;
 	while(!feof(config)){
 		fscanf(config, "%s%d", param,&tempint);
 	//	printf("%s %d\n",param,tempint);

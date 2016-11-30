@@ -13,8 +13,8 @@
 int main(int argc, char** argv){
 	srand(time(NULL));
 	FILE *input, *config, *output;
-	int flagd=1, flagq=1, flago=1,k=4, L=5,i;
-	if (argc%2==0 || argc!=7){
+	int flagd=1, flagq=1, flago=1,i,com=0;
+	if (argc!=7 && argc!=8){
 		printf("something is wrong with the arguments\n");
 		return 0;
 	}
@@ -37,10 +37,11 @@ int main(int argc, char** argv){
 			return 0;
 		}
 	}
-	if(flagd==1){
-		printf("Give input file: ");
-		scanf("%s", inputstr);
-	}
+	if(argc==8){
+		if(!strcmp(argv[7], "-complete")){
+			com=1;
+		}
+	} 
 	 if ((input = fopen(inputstr, "r")) == NULL){
      		printf("wrong file name\n");
      		return -1;
@@ -53,29 +54,26 @@ int main(int argc, char** argv){
      		printf("wrong file name\n");
      		return -1;
 	}
-	clock_t begin, end;
-	double time_spent;
 	char metric_space[100];
     char metric[100];
-    int size,j,o,items,no_cl,Q,s,co;
-    co=configuration(config,&Q,&k,&L,&no_cl,&s);
+    int size,j,o,items,no_cl,Q,s,co,L,k;
+    co=configuration(config,&Q,&k,&L,&no_cl,&s);         //read configuration file
 	if(co==-1) return -1;
 	printf("L= %d\nk= %d\nQ= %d\ns= %d\nclusters= %d\n",L,k,Q,s,no_cl);
     fscanf(input, "@metric_space %s\n", metric_space);
     if (!strcmp(metric_space, "vector")){
 		fscanf(input, "@metric %s\n", metric);
 		if(!strcmp(metric,"euclidean")){
-		//	int size, items;
-			euc_main(input,output,k,no_cl,Q,s,L,W);
+			euc_main(input,output,k,no_cl,Q,s,L,W,com);
 		}
-		else{                                                  //vector, not euclidean but cosine
-			cos_main(input,output,k,no_cl,Q,s,L);
+		else{                                                 
+			cos_main(input,output,k,no_cl,Q,s,L,com);
    		 }
    }
 	else if(!strcmp(metric_space,"hamming")){
-		ham_main(input,output,k,no_cl,Q,s,L);
+		ham_main(input,output,k,no_cl,Q,s,L,com);
 	}	
 	else if(!strcmp(metric_space,"matrix")){
-		ma_main(input,output,k,no_cl,Q,s,L);
+		ma_main(input,output,k,no_cl,Q,s,L,com);
 	}
 }

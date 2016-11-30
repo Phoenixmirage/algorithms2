@@ -10,10 +10,10 @@ struct Node_Ham{
 	char name[12];                      
 	unsigned long long int binarystr;    // binary string converted to unsigned long long int
 	int visited;
-	int center;
-	int center2;
-	int dist_center;
-	int dist_center2;
+	int center;               //cluster which belongs to
+	int center2;              //second best cluster
+	int dist_center;          //distance from center of cluster
+	int dist_center2;         //distance of second best center
 };
 
 struct List_nodes_Ham{
@@ -27,9 +27,9 @@ struct List_pointers_Ham{
 };
 
 struct ham_cluster{
-	Node_Ham *nodeptr;
-	int items;
-	float silhouette;
+	Node_Ham *nodeptr;                   //pointer to center
+	int items;                           //number of items in cluster
+	float silhouette;                    //silhouette pointer
 };
 
 long int G_hamming(int **G_h, int no_G, int number, int size, int k){
@@ -107,7 +107,7 @@ List_nodes_Ham* Hamming_input(FILE *fd,int* final_size, int * item){
 }
 
 void Ham_init_array(Node_Ham ***array,List_nodes_Ham *listn, int items){
-	int i;
+	int i;                                                              //array of items to easy find the items
 	(*array)=malloc(items*(sizeof(Node_Ham*)));
 	i=items-1;
 	List_nodes_Ham *pointer=listn;
@@ -123,7 +123,7 @@ void init_ham_cl(ham_cluster **clusters,int no_cl){
 	(*clusters)=malloc(no_cl*sizeof(ham_cluster));
 	printf("Clusters initialized!\n");
 }
-
+//initialization concentrate
 void ham_init_parkjun(Node_Ham **array,int items,int size,ham_cluster **clusters,int no_cl){
 	int i,j,z;
 	int **distances;
@@ -191,7 +191,7 @@ void ham_print_clusters(ham_cluster *clusters,int no_cl){
 	for(i=0;i<no_cl;i++)
 		printf("CLUSTER-%d: {size: %d, medoid: %s}\n",i+1,clusters[i].items,clusters[i].nodeptr->name);
 }
-
+//pam assignment
 void ham_pam_ass(ham_cluster *clusters,int no_cl,int items, Node_Ham **array,int size){
 	int i,j;
 	int distance;
@@ -201,7 +201,7 @@ void ham_pam_ass(ham_cluster *clusters,int no_cl,int items, Node_Ham **array,int
 		array[i]->dist_center=distance;
 		array[i]->center=0;
 		for(j=1;j<no_cl;j++){
-			distance=hamming_distance(array[i]->binarystr,clusters[j].nodeptr->binarystr,size);
+			distance=hamming_distance(array[i]->binarystr,clusters[j].nodeptr->binarystr,size); //best center and some second best
 			if(distance<array[i]->dist_center){
 				array[i]->dist_center2=array[i]->dist_center;
 				array[i]->center2=array[i]->center;
@@ -215,7 +215,7 @@ void ham_pam_ass(ham_cluster *clusters,int no_cl,int items, Node_Ham **array,int
 			for(j=1;j<no_cl;j++){
 				distance=hamming_distance(array[i]->binarystr,clusters[j].nodeptr->binarystr,size);
 				 if(distance!=array[i]->dist_center){
-						if(array[i]->center2==-1){
+						if(array[i]->center2==-1){                                      //find 2nd best if it already doesnt have one
 							array[i]->dist_center2=distance;
 							array[i]->center2=j;
 						}
@@ -437,7 +437,7 @@ void ham_k_medoids(int k,int size,int items,Node_Ham ***array,ham_cluster **clus
 }
 
 void ham_print_data(FILE *output,ham_cluster *clusters, Node_Ham **array, int size, int items, int no_cl,int flag,double time){
-	int i,j;
+	int i,j,flag1;
 	for(i=0; i<no_cl; i++){
 		fprintf(output,"CLUSTER-%d: {size: %d, medoid: %s}\n",i+1,clusters[i].items,clusters[i].nodeptr->name);
 	}
@@ -451,6 +451,22 @@ void ham_print_data(FILE *output,ham_cluster *clusters, Node_Ham **array, int si
 		clusters[i].nodeptr=NULL;
 	}
 	fprintf(output,"]\n");
+	if(flag==1){
+		for(i=0;i<no_cl;i++){
+			flag1=1;
+			fprintf(output,"CLUSTER-%d: {",i+1);
+			for(j=0;j<items;j++){
+				if(array[j]->center==i){
+					if(flag1==1){
+						fprintf(output,"%s",array[j]->name);
+						flag1=0;
+					}
+					else fprintf(output,",%s",array[j]->name);
+				}
+			}
+			fprintf(output,"}\n");
+		}
+	}
 	for(i=0;i<items;i++){
 		array[i]->center=-1;
 		array[i]->center2=-1;
@@ -599,7 +615,7 @@ void free_list_nodes_ham(List_nodes_Ham **listn, int size){
 	}
 }
 
-void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
+void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int com){
 	clock_t begin, end;
 	double time_spent;
 	int **G_h;
@@ -634,7 +650,7 @@ void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ham_silhouette(clusters,objects,size,no_cl,items);
-				ham_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ham_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==1){
 				fprintf(output,"Algorithm: I%dA1U2\n",i);
@@ -646,7 +662,7 @@ void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ham_silhouette(clusters,objects,size,no_cl,items);
-				ham_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ham_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==2){
 				fprintf(output,"Algorithm: I%dA2U1\n",i);
@@ -657,7 +673,7 @@ void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ham_silhouette(clusters,objects,size,no_cl,items);
-				ham_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ham_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==3){
 				fprintf(output,"Algorithm: I%dA2U2\n",i);
@@ -670,7 +686,7 @@ void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ham_silhouette(clusters,objects,size,no_cl,items);
-				ham_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ham_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 		}
 	}

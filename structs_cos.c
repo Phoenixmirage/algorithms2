@@ -12,11 +12,11 @@ struct cos_vec{
 struct Node_cos{
 	char name[12];
 	int visited;
-	float* array; 
-	int center;
-	int center2;
-	float dist_center;
-	float dist_center2;           //array of coordinates of item 
+	float* array;               //array of coordinates of item 
+	int center;					//cluster which belongs to
+	int center2;				//2nd best cluster
+	float dist_center;          //distance from center
+	float dist_center2;           //distance from 2nd best center
 };
 
 struct List_nodes_cos{
@@ -570,7 +570,7 @@ void cos_by_ANN(cos_cluster *clusters,int no_cl,int items, Node_cos **array,int 
 }
 
 void cos_print_data(FILE *output,cos_cluster *clusters, Node_cos **array, int size, int items, int no_cl,int flag,double time){
-	int i,j;
+	int i,j,flag1;
 	for(i=0; i<no_cl; i++){
 		fprintf(output,"CLUSTER-%d: {size: %d, medoid: %s}\n",i+1,clusters[i].items,clusters[i].nodeptr->name);
 	}
@@ -584,6 +584,22 @@ void cos_print_data(FILE *output,cos_cluster *clusters, Node_cos **array, int si
 		clusters[i].nodeptr=NULL;
 	}
 	fprintf(output,"]\n");
+	if(flag==1){
+		for(i=0;i<no_cl;i++){
+			flag1=1;
+			fprintf(output,"CLUSTER-%d: {",i+1);
+			for(j=0;j<items;j++){
+				if(array[j]->center==i){
+					if(flag1==1){
+						fprintf(output,"%s",array[j]->name);
+						flag1=0;
+					}
+					else fprintf(output,",%s",array[j]->name);
+				}
+			}
+			fprintf(output,"}\n");
+		}
+	}
 	for(i=0;i<items;i++){
 		array[i]->center=-1;
 		array[i]->center2=-1;
@@ -618,7 +634,7 @@ void init_hash_cos(List_pointers_cos ****hashtable,cos_vec *randvec,int size,int
 	printf("Data stored in hashtables\n");
 }
 
-void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
+void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int com){
 	clock_t begin, end;
 	double time_spent;
 	int **G_h;
@@ -655,7 +671,7 @@ void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
 				time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				cos_silhouette(clusters,objects,size,no_cl,items);
-				cos_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				cos_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==1){
 				fprintf(output,"Algorithm: I%dA1U2\n",i);
@@ -667,7 +683,7 @@ void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				cos_silhouette(clusters,objects,size,no_cl,items);
-				cos_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				cos_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==2){
 				fprintf(output,"Algorithm: I%dA2U1\n",i);
@@ -678,7 +694,7 @@ void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				cos_silhouette(clusters,objects,size,no_cl,items);
-				cos_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				cos_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==3){
 				fprintf(output,"Algorithm: I%dA2U2\n",i);
@@ -690,7 +706,7 @@ void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				cos_silhouette(clusters,objects,size,no_cl,items);
-				cos_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				cos_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 		}
 	}

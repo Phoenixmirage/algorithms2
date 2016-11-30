@@ -28,7 +28,7 @@ void ma_silhouette(ma_cluster *clusters, Node_ma **array,int size,int no_cl,int 
 void ma_k_medoids(int k,int size,int items,Node_ma ***array,ma_cluster **clusters,int **distance_matrix);
 void ma_print_data(FILE *output,ma_cluster *clusters, Node_ma **array, int size, int items, int no_cl,int flag,double time);
 void ma_by_ANN(ma_cluster *clusters,int no_cl,int items, Node_ma **array,int size,List_pointers_ma ***hashtables,int k,int L,Dist_points *rand_x,int hashsize,int **G_h,int **distance_matrix);
-void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L);
+void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int com);
 
 #endif
 

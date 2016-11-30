@@ -26,5 +26,5 @@ int ham_Loyds(ham_cluster **clusters, int no_cl, int items, Node_Ham **array, in
 void ham_k_medoids(int k,int size,int items,Node_Ham ***array,ham_cluster **clusters);
 void ham_print_data(FILE *output,ham_cluster *clusters, Node_Ham **array, int size, int items, int no_cl,int flag,double time);
 void ham_by_ANN(ham_cluster *clusters,int no_cl,int items, Node_Ham **array,int size,List_pointers_Ham ***hashtables,int k,int L,int hashsize,int **G_h);
-void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L);
+void ham_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int com);
 #endif

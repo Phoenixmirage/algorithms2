@@ -30,5 +30,5 @@ void cos_silhouette(cos_cluster *clusters, Node_cos **array,int size,int no_cl,i
 void cos_k_medoids(int k,int size,int items,Node_cos ***array,cos_cluster **clusters);
 void cos_print_data(FILE *output,cos_cluster *clusters, Node_cos **array, int size, int items, int no_cl,int flag,double time);
 void cos_by_ANN(cos_cluster *clusters,int no_cl,int items, Node_cos **array,int size,List_pointers_cos ***hashtables,int k,int L,cos_vec *randvec,int hashsize,int **G_h);
-void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L);
+void cos_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int com);
 #endif

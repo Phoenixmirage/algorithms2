@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "functions.h"
 #include "structs_ma.h"
 #include <string.h>
 #include <stdlib.h>
@@ -10,11 +11,11 @@ struct Node_ma{
 	char name[12]; //name of item
 	int *array;    // array of distances from all other items
 	int pos;		//position in DistanceMatrix
-	int visited;
-	int center;
-	int center2;
-	int dist_center;
-	int dist_center2; 	//checks if node is visited to avoid duplicates
+	int visited;    //checks if node is visited to avoid duplicates
+	int center;           //cluster which belongs to
+	int center2;          //2nd best cluster
+	int dist_center;      //distance from center
+	int dist_center2; 	//distance from 2nd best center
 };
 
 struct List_nodes_ma{        
@@ -479,7 +480,7 @@ void ma_k_medoids(int k,int size,int items,Node_ma ***array,ma_cluster **cluster
 }
 
 void ma_print_data(FILE *output,ma_cluster *clusters, Node_ma **array, int size, int items, int no_cl,int flag,double time){
-	int i,j;
+	int i,j,flag1;
 	for(i=0; i<no_cl; i++){
 		fprintf(output,"CLUSTER-%d: {size: %d, medoid: %s}\n",i+1,clusters[i].items,clusters[i].nodeptr->name);
 	}
@@ -493,6 +494,22 @@ void ma_print_data(FILE *output,ma_cluster *clusters, Node_ma **array, int size,
 		clusters[i].nodeptr=NULL;
 	}
 	fprintf(output,"]\n");
+	if(flag==1){
+		for(i=0;i<no_cl;i++){
+			flag1=1;
+			fprintf(output,"CLUSTER-%d: {",i+1);
+			for(j=0;j<items;j++){
+				if(array[j]->center==i){
+					if(flag1==1){
+						fprintf(output,"%s",array[j]->name);
+						flag1=0;
+					}
+					else fprintf(output,",%s",array[j]->name);
+				}
+			}
+			fprintf(output,"}\n");
+		}
+	}
 	for(i=0;i<items;i++){
 		array[i]->center=-1;
 		array[i]->center2=-1;
@@ -620,7 +637,7 @@ void free_matrix_array(int ***array,int size){
 	free(*array);
 }
 
-void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
+void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L,int com){
 	clock_t begin, end;
 	double time_spent;
 	int **G_h;
@@ -658,7 +675,7 @@ void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ma_silhouette(clusters,objects,size,no_cl,items);
-				ma_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ma_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==1){
 				fprintf(output,"Algorithm: I%dA1U2\n",i);
@@ -670,7 +687,7 @@ void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ma_silhouette(clusters,objects,size,no_cl,items);
-				ma_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ma_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==2){
 				fprintf(output,"Algorithm: I%dA2U1\n",i);
@@ -681,7 +698,7 @@ void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ma_silhouette(clusters,objects,size,no_cl,items);
-				ma_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ma_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 			else if(j==3){
 				fprintf(output,"Algorithm: I%dA2U2\n",i);
@@ -693,7 +710,7 @@ void ma_main(FILE *input,FILE *output,int k,int no_cl, int Q, int s,int L){
 				end=clock();
     			time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 				ma_silhouette(clusters,objects,size,no_cl,items);
-				ma_print_data(output,clusters,objects,size,items,no_cl,0,time_spent);
+				ma_print_data(output,clusters,objects,size,items,no_cl,com,time_spent);
 			}
 		}
 	}
